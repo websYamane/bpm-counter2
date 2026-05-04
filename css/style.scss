@@ -1,0 +1,155 @@
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	background-color: #111;
+	color: #fff;
+	font-family: sans-serif;
+	font-size: 16px;
+	height: 100vh;
+	height: 100dvh;
+	padding-bottom: 200px;
+
+	@media screen and (max-width: 750px) {
+		font-size: calc(32 / 750 * 100vw);
+	}
+}
+
+
+h1 {
+	font-size: 2em;
+	font-weight: 700;
+	margin-bottom: calc(30 / 32 * 1em);
+	text-align: center;
+	line-height: 1.2;
+
+	.min {
+		font-size: .5em;
+	}
+}
+
+
+#bpm {
+	font-size: calc(48 / 16 * 1em);
+	margin-top: calc(10 / 48 * 1em);
+}
+
+#debug,
+#autoStatus {
+	margin-top: .5em;
+	font-size: calc(12 / 16 * 1em);
+	color: #aaa;
+}
+
+#waveCanvas,
+#scrollingWaveCanvas {
+	display: block;
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	// margin-top: calc(20 / 16 * 1em);
+	// border: 1px solid #333;
+}
+
+#scrollingWaveCanvas {
+	bottom:201px;
+	border-bottom:1px solid rgba(255, 255, 255, 0.2);
+}
+
+button {
+	font: inherit;
+	font-size: calc(14 / 16 * 1em);
+	padding: .5em 1em;
+	cursor: pointer;
+	border: 1px solid #333;
+	border-radius: calc(4 / 14 * 1em);
+
+	&:disabled {
+		opacity: 1;
+		background-color: #168800;
+		color: #fff;
+	}
+}
+
+
+.btn-flash {
+	background-color: #21cf00 !important;
+	color: white !important;
+	box-shadow: 0 0 20px rgba(255, 255, 0, 0.9) !important;
+	border-color: #21cf00 !important;
+	transform: scale(1.0);
+	transition: all 0s ease-out;
+}
+
+#startBtn {
+	transition: all 0.1s ease-in;
+}
+
+#gainControls {
+	margin: 1em auto 0;
+	text-align: center;
+
+	>div {
+		+div {
+			margin-top: .5em;
+
+			span {
+				display: block;
+			}
+		}
+	}
+
+	label {
+		padding: .5em 1em;
+		background-color: #222;
+		display: inline-block;
+		font: inherit;
+		font-size: calc(14 / 16 * 1em);
+		border: 1px solid #333;
+		border-radius: calc(4 / 14 * 1em);
+
+		[type="checkbox"] {
+			display: none;
+		}
+
+		&:has(:checked) {
+			background-color: #e82a2a;
+		}
+	}
+}
+
+
+#autoStatus {
+	margin: 1em auto 0;
+}
+
+
+input[type="range"] {
+	-webkit-appearance: none;
+	width: calc(320 / 16 * 1em);
+	height: calc(18 / 16 * 1em);
+	background: linear-gradient(to right, #444 0%, #666666 100%);
+	background-position: center;
+	background-repeat: no-repeat;
+	overflow: hidden;
+	outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	width: calc(20 / 16 * 1em);
+	height: calc(18 / 16 * 1em);
+	background: #999999;
+	position: relative;
+	z-index: 3;
+	box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.3);
+}
+
+input[type="checkbox"] {
+	accent-color: #a00;
+	margin-right: .5em;
+}
