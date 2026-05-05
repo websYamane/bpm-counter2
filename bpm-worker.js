@@ -34,7 +34,7 @@ function estimateBpmWithEssentia(signal, sampleRate) {
 
     let result = null;
     try {
-      result = essentia.RhythmExtractor2013(signalVector, 208, "degara", 40);
+      result = essentia.RhythmExtractor2013(signalVector, 208, "multifeature", 40);
       const bpm = Number(result?.bpm ?? 0);
       if (Number.isFinite(bpm) && bpm > 0) {
         return { bpm, error: null };
