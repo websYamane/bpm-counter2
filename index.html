@@ -10,7 +10,7 @@
 
 <body>
   <div style="padding:calc(20 / 16 * 1em);">
-    <h1>BPM Counter2<br><span class="min">(Mic Input / Auto / FX)</span></h1>
+    <h1>BPM Counter<br><span class="min">(Mic Input / Auto / FX)</span></h1>
     <div style="text-align: center;">
       <button id="startBtn">Start</button>
 
@@ -75,6 +75,7 @@
         wakeLock = await navigator.wakeLock.request("screen");
         wakeLock.addEventListener("release", () => {
           console.log("Wake Lock released");
+          wakeLock = null;
         });
       } catch (err) {
         console.error("WakeLock error:", err);
@@ -161,6 +162,50 @@
       const audioContext = new AudioContext({ sampleRate: 44100 });
       await audioContext.resume();
       console.log("AudioContext sampleRate:", audioContext.sampleRate);
+
+      // Inline AudioWorklet setup for capturing audio chunks off-main-thread with zero-copy transfers
+      const processorCode = `
+        class BpmAudioProcessor extends AudioWorkletProcessor {
+          constructor() {
+            super();
+            this.bufferSize = 2048;
+            this.buffer = new Float32Array(this.bufferSize);
+            this.writeIndex = 0;
+          }
+
+          process(inputs, outputs, parameters) {
+            const input = inputs[0];
+            if (!input || input.length === 0) return true;
+            const channelData = input[0];
+            if (!channelData || channelData.length === 0) return true;
+
+            let readIndex = 0;
+            const inputLength = channelData.length;
+
+            while (readIndex < inputLength) {
+              const remainingSpace = this.bufferSize - this.writeIndex;
+              const samplesToCopy = Math.min(inputLength - readIndex, remainingSpace);
+              
+              this.buffer.set(channelData.subarray(readIndex, readIndex + samplesToCopy), this.writeIndex);
+              
+              this.writeIndex += samplesToCopy;
+              readIndex += samplesToCopy;
+
+              if (this.writeIndex >= this.bufferSize) {
+                this.port.postMessage(this.buffer, [this.buffer.buffer]);
+                this.buffer = new Float32Array(this.bufferSize);
+                this.writeIndex = 0;
+              }
+            }
+            return true;
+          }
+        }
+        registerProcessor('bpm-audio-processor', BpmAudioProcessor);
+      `;
+      const blob = new Blob([processorCode], { type: "application/javascript" });
+      const processorUrl = URL.createObjectURL(blob);
+      await audioContext.audioWorklet.addModule(processorUrl);
+
       const bpmWorker = createBpmWorker();
       let workerBusy = false;
       let workerReady = false;
@@ -193,12 +238,15 @@
 
       const source = audioContext.createMediaStreamSource(stream);
 
-      // Pause analysis when app is backgrounded
-      document.addEventListener('visibilitychange', () => {
+      // Pause analysis when app is backgrounded & re-acquire Wake Lock on focus
+      document.addEventListener('visibilitychange', async () => {
         if (document.hidden) {
           audioContext.suspend();
         } else {
           audioContext.resume();
+          if (startBtn.disabled && !wakeLock) {
+            await enableWakeLock();
+          }
         }
       });
 
@@ -247,8 +295,8 @@
       analyser.fftSize = 2 ** 10;
       analyser.smoothingTimeConstant = 0.15;
 
-      // BPM Analyzer（essentia.js）
-      const bpmProcessor = audioContext.createScriptProcessor(2048, 1, 1);
+      // BPM Analyzer（essentia.js） - Using the modern AudioWorkletNode
+      const bpmProcessor = new AudioWorkletNode(audioContext, "bpm-audio-processor");
       const bpmMute = audioContext.createGain();
       bpmMute.gain.value = 0;
       bpmProcessor.connect(bpmMute);
@@ -291,12 +339,11 @@
       updateEffectRouting();
       effectToggle.addEventListener("change", updateEffectRouting);
 
-      bpmProcessor.onaudioprocess = (event) => {
-        const input = event.inputBuffer.getChannelData(0);
-        const copied = new Float32Array(input.length);
-        copied.set(input);
-        bpmChunks.push(copied);
-        bpmTotalSamples += copied.length;
+      bpmProcessor.port.onmessage = (event) => {
+        const input = event.data; // Float32Array of size 2048 from the worklet thread
+        // We own this buffer, so we can push it directly without copying!
+        bpmChunks.push(input);
+        bpmTotalSamples += input.length;
 
         while (bpmTotalSamples > maxSamples && bpmChunks.length > 0) {
           const removed = bpmChunks.shift();
